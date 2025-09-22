@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BEC Campus Lost & Found</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0f172a; /* bg-slate-900 */
+            --bg-secondary: #1e293b; /* bg-slate-800 */
+            --bg-secondary-translucent: rgba(30, 41, 59, 0.8);
+            --bg-tertiary: #334155; /* bg-slate-700 */
+            --border-primary: #475569; /* bg-slate-600 */
+            --border-secondary: #334155; /* border-slate-700 */
+            --text-primary: #e2e8f0; /* text-slate-200 */
+            --text-secondary: #94a3b8; /* text-slate-400 */
+            --text-accent: #34d399; /* text-emerald-400 */
+            --accent-primary: #10b981; /* emerald-500 */
+            --accent-primary-hover: #059669; /* emerald-600 */
+        }
+
+        .light-mode {
+            --bg-primary: #f8fafc; /* bg-slate-50 */
+            --bg-secondary: #ffffff; /* bg-white */
+            --bg-secondary-translucent: rgba(255, 255, 255, 0.8);
+            --bg-tertiary: #f1f5f9; /* bg-slate-100 */
+            --border-primary: #e2e8f0; /* border-slate-200 */
+            --border-secondary: #cbd5e1; /* border-slate-300 */
+            --text-primary: #1e293b; /* text-slate-800 */
+            --text-secondary: #64748b; /* text-slate-500 */
+            --text-accent: #059669; /* text-emerald-600 */
+            --accent-primary: #10b981; /* emerald-500 */
+            --accent-primary-hover: #047857; /* emerald-700 */
+        }
+        
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+        #notification-toast {
+            position: fixed;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: bottom 0.5s ease-in-out;
+            z-index: 100;
+        }
+
+        #notification-toast.show {
+            bottom: 20px;
+        }
+
+        .toast-success {
+            background-color: #10b981;
+        }
+
+        .toast-error {
+            background-color: #ef4444;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        @keyframes scan {
+            0%, 100% { transform: translateX(-20px) rotate(-15deg); }
+            50% { transform: translateX(20px) rotate(15deg); }
+        }
+        .scanner-icon {
+            animation: scan 3s ease-in-out infinite;
+        }
+
+        .glow-button {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glow-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .glow-button:hover::before {
+            left: 100%;
+        }
+
+        .glow-button:hover {
+            box-shadow: 
+                0 0 5px rgba(16, 185, 129, 1),
+                0 0 10px rgba(16, 185, 129, 0.8),
+                0 0 15px rgba(16, 185, 129, 0.6),
+                0 0 20px rgba(16, 185, 129, 0.4),
+                0 0 35px rgba(16, 185, 129, 0.2),
+                0 0 50px rgba(16, 185, 129, 0.1);
+            animation: neonPulse 2s ease-in-out infinite alternate;
+        }
+
+        .glow-border {
+            transition: all 0.3s ease;
+        }
+
+        .glow-border:hover {
+            box-shadow: 
+                0 0 5px rgba(16, 185, 129, 1),
+                0 0 10px rgba(16, 185, 129, 0.8),
+                0 0 15px rgba(16, 185, 129, 0.6),
+                0 0 20px rgba(16, 185, 129, 0.4),
+                0 0 35px rgba(16, 185, 129, 0.2),
+                0 0 50px rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 1) !important;
+            transform: translateY(-3px);
+            animation: neonPulse 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes neonPulse {
+            from {
+                box-shadow: 
+                    0 0 5px rgba(16, 185, 129, 1),
+                    0 0 10px rgba(16, 185, 129, 0.8),
+                    0 0 15px rgba(16, 185, 129, 0.6),
+                    0 0 20px rgba(16, 185, 129, 0.4),
+                    0 0 35px rgba(16, 185, 129, 0.2),
+                    0 0 50px rgba(16, 185, 129, 0.1);
+            }
+            to {
+                box-shadow: 
+                    0 0 10px rgba(16, 185, 129, 1),
+                    0 0 20px rgba(16, 185, 129, 0.8),
+                    0 0 30px rgba(16, 185, 129, 0.6),
+                    0 0 40px rgba(16, 185, 129, 0.4),
+                    0 0 60px rgba(16, 185, 129, 0.2),
+                    0 0 80px rgba(16, 185, 129, 0.1);
+            }
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .fade-in-slow {
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+    </style>
+</head>
+
+<body class="font-[Inter,sans-serif]">
+
+    <div id="landingPage">
+        <!-- Back to Top Button -->
+        <button id="backToTopBtn" onclick="scrollToTop()" class="fixed bottom-8 right-8 z-50 bg-emerald-500 hover:bg-emerald-600 text-white p-3 rounded-full shadow-lg transition-all duration-300 opacity-0 pointer-events-none" style="transform: translateY(20px);">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+            </svg>
+        </button>
+        
+        <div class="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
+            <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-10"></div>
+            <div class="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] bg-gradient-to-br from-emerald-900/50 via-slate-900 to-teal-900/50 animate-pulse"></div>
+            
+            <header class="absolute top-0 left-0 right-0 p-6 z-50 bg-slate-800/70 backdrop-blur-sm border-b border-slate-700">
+                <div class="container mx-auto flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-emerald-500 w-10 h-10 flex items-center justify-center rounded-full text-white font-bold text-xl">BEC</div>
+                        <div class="text-2xl font-bold text-white">BEC Lost & Found</div>
+                    </div>
+                    <div class="flex items-center space-x-6 relative z-50">
+                        <button onclick="scrollToSection('features', event)" class="font-semibold text-slate-300 hover:text-white cursor-pointer transition-colors duration-200 px-4 py-2 relative z-50">Features</button>
+                        <button onclick="scrollToSection('about', event)" class="font-semibold text-slate-300 hover:text-white cursor-pointer transition-colors duration-200 px-4 py-2 relative z-50">About</button>
+                    </div>
+                </div>
+            </header>
+            
+            <main class="container mx-auto flex-grow flex flex-col items-center justify-center z-20 px-6 text-center">
+                 <div class="w-56 h-56 scanner-icon mb-8">
+                    <svg class="w-full h-full text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <h1 class="text-5xl md:text-7xl font-extrabold text-white">
+                    <span class="bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-400">Find Anything,</span>
+                    <br>Your Way.
+                </h1>
+                <p class="text-slate-400 text-lg mt-6 max-w-xl">Our platform simplifies connecting people who've lost items with those who've found them on campus.</p>
+                <div class="mt-12">
+                    <button onclick="navigateTo('auth')" class="bg-emerald-500 text-white font-bold py-4 px-10 rounded-full shadow-lg hover:bg-emerald-600 transition duration-300 transform hover:scale-105 glow-button glow-border">Start Searching</button>
+                </div>
+            </main>
+        </div>
+
+        <section id="features" class="py-20 bg-slate-800/50">
+            <div class="container mx-auto px-6 text-center">
+                <h2 class="text-4xl font-extrabold text-white mb-3">Powerful Features</h2>
+                <p class="text-slate-400 mb-12 max-w-2xl mx-auto">Everything you need to reconnect with your lost belongings, all in one place.</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700">
+                        <h3 class="text-2xl font-bold text-white mb-3">Report Lost & Found</h3>
+                        <p class="text-slate-400">Quickly post a detailed report for any item you've lost or found. Add images and descriptions to increase the chances of a match.</p>
+                    </div>
+                    <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700">
+                        <h3 class="text-2xl font-bold text-white mb-3">Instant Search</h3>
+                        <p class="text-slate-400">Our powerful search lets you filter through all listed items in real-time. Find what you're looking for faster than ever.</p>
+                    </div>
+                    <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700">
+                        <h3 class="text-2xl font-bold text-white mb-3">Secure Claims</h3>
+                        <p class="text-slate-400">A secure and private claiming process ensures that items are returned only to their rightful owners after verification.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="about" class="py-20">
+             <div class="container mx-auto px-6 text-center">
+                <h2 class="text-4xl font-extrabold text-white mb-3">About Our Mission</h2>
+                <p class="text-slate-400 mb-8 max-w-3xl mx-auto">We believe that a lost item shouldn't mean a lost cause. BEC Lost & Found was created by students, for students, to foster a more connected and helpful campus community. Our mission is to leverage simple technology to make the process of recovering lost items as painless as possible, reducing stress and saving time for everyone involved.</p>
+            </div>
+        </section>
+
+    </div>
+
+    <div id="authPage" class="hidden fixed inset-0 z-50" style="background-color: var(--bg-primary);">
+       <div class="flex flex-col md:flex-row min-h-screen w-full">
+            <div class="hidden md:flex flex-col justify-center items-center w-1/2 bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-12 text-center">
+                <div class="bg-white/20 w-24 h-24 flex items-center justify-center rounded-full text-white font-bold text-5xl mb-6">BEC</div>
+                <h2 class="text-4xl font-extrabold">Never Lose Anything Again.</h2>
+                <p class="mt-4 text-emerald-200 max-w-sm">Join our community to easily find your lost items and help others find theirs.</p>
+            </div>
+            <div class="w-full md:w-1/2 flex items-center justify-center p-6" style="background-color: var(--bg-secondary-translucent); border-left: 1px solid var(--border-secondary);">
+                <div id="loginFormContainer" class="w-full max-w-md animate-fade-in">
+                     <h2 class="text-3xl font-extrabold mb-2" style="color: var(--text-primary);">Welcome Back!</h2>
+                    <p class="mb-8" style="color: var(--text-secondary);">Please sign in to your account.</p>
+                    <form id="loginForm" class="space-y-6">
+                        <div><input name="email" type="email" placeholder="Email Address" autocomplete="email" required class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); color: var(--text-primary);"></div>
+                        <div><input name="password" type="password" placeholder="Password" autocomplete="current-password" required class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); color: var(--text-primary);"></div>
+                        <button type="submit" class="w-full text-white font-semibold py-3 rounded-lg shadow-md transition" style="background-color: var(--accent-primary-hover);">Login</button>
+                    </form>
+                    <p class="mt-6 text-sm" style="color: var(--text-secondary);">Don't have an account? <a href="#" onclick="toggleAuthForms(event, false)" class="font-medium hover:underline" style="color: var(--text-accent);">Sign Up</a></p>
+                </div>
+                <div id="signupFormContainer" class="hidden w-full max-w-md animate-fade-in">
+                    <h2 class="text-3xl font-extrabold mb-2" style="color: var(--text-primary);">Create an Account</h2>
+                    <p class="mb-8" style="color: var(--text-secondary);">Join us and never lose an item again.</p>
+                    <form id="signupForm" class="space-y-6">
+                        <div><input name="name" type="text" placeholder="Full Name" autocomplete="name" required class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); color: var(--text-primary);"></div>
+                        <div><input name="email" type="email" placeholder="Email Address" autocomplete="email" required class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); color: var(--text-primary);"></div>
+                        <div>
+                            <div class="relative">
+                                <input name="password" id="signupPassword" type="password" placeholder="Password" autocomplete="new-password" required class="w-full px-4 py-3 pr-12 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); color: var(--text-primary);">
+                                <button type="button" id="togglePassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 focus:outline-none" style="color: var(--text-secondary);">
+                                    <svg id="eyeIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                    <svg id="eyeOffIcon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div id="passwordRequirements" class="mt-2 text-sm" style="color: var(--text-secondary); display: block;">
+                                <div class="space-y-1">
+                                    <div id="req-length" class="flex items-center gap-2">
+                                        <span id="req-length-icon" class="text-red-400">✗</span>
+                                        <span>At least 8 characters</span>
+                                    </div>
+                                    <div id="req-uppercase" class="flex items-center gap-2">
+                                        <span id="req-uppercase-icon" class="text-red-400">✗</span>
+                                        <span>At least one uppercase letter</span>
+                                    </div>
+                                    <div id="req-special" class="flex items-center gap-2">
+                                        <span id="req-special-icon" class="text-red-400">✗</span>
+                                        <span>At least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" id="signupBtn" class="w-full text-white font-semibold py-3 rounded-lg shadow-md transition glow-button" style="background-color: var(--accent-primary-hover);">
+                            <span id="signupBtnText">Sign Up</span>
+                            <span id="signupBtnSpinner" class="loading-spinner hidden"></span>
+                        </button>
+                    </form>
+                    <p class="mt-6 text-sm" style="color: var(--text-secondary);">Already have an account? <a href="#" onclick="toggleAuthForms(event, true)" class="font-medium hover:underline" style="color: var(--text-accent);">Login</a></p>
+                </div>
+            </div>
+       </div>
+    </div>
+
+    <div id="verificationPage" class="hidden fixed inset-0 z-50" style="background-color: var(--bg-primary);">
+        <div class="flex flex-col md:flex-row min-h-screen w-full">
+            <div class="hidden md:flex flex-col justify-center items-center w-1/2 bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-12 text-center">
+                <div class="bg-white/20 w-24 h-24 flex items-center justify-center rounded-full text-white font-bold text-5xl mb-6">BEC</div>
+                <h2 class="text-4xl font-extrabold">Check Your Email!</h2>
+                <p class="mt-4 text-emerald-200 max-w-sm">We've sent you a verification link to complete your registration.</p>
+            </div>
+            <div class="w-full md:w-1/2 flex items-center justify-center p-6" style="background-color: var(--bg-secondary-translucent); border-left: 1px solid var(--border-secondary);">
+                <div class="w-full max-w-md animate-fade-in text-center">
+                    <div class="mb-8">
+                        <div class="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-10 h-10 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <h2 class="text-3xl font-extrabold mb-2" style="color: var(--text-primary);">Verify Your Email</h2>
+                        <p class="mb-8" style="color: var(--text-secondary);">We've sent a verification link to your email address. Please check your inbox and click the link to activate your account.</p>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <button onclick="navigateTo('auth')" class="w-full text-white font-semibold py-3 rounded-lg shadow-md transition" style="background-color: var(--accent-primary-hover);">Back to Login</button>
+                        
+                        <div class="text-sm" style="color: var(--text-secondary);">
+                            <p>Didn't receive the email?</p>
+                            <form id="resendForm" class="mt-2">
+                                <input name="email" type="email" placeholder="Enter your email" autocomplete="email" required class="w-full px-4 py-2 rounded-lg mb-2" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); color: var(--text-primary);">
+                                <button type="submit" class="w-full text-emerald-600 font-semibold py-2 rounded-lg border border-emerald-600 hover:bg-emerald-50 transition">Resend Verification Email</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+       </div>
+    </div>
+
+    <div id="mainContent" class="hidden">
+        <header class="sticky top-0 z-40 backdrop-blur-sm" style="background-color: var(--bg-secondary-translucent); border-bottom: 1px solid var(--border-secondary);">
+            <div class="container mx-auto px-6 py-3 flex justify-between items-center gap-4">
+                <div class="text-2xl font-bold cursor-pointer" style="color: var(--text-accent);" onclick="navigateTo('home')">BEC Lost & Found</div>
+                <form id="searchForm" class="flex-grow max-w-lg relative">
+                    <input id="searchInput" type="text" placeholder="Search for items..." autocomplete="off" class="w-full p-2 pl-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-slate-400" style="background-color: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-primary);">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2" style="color: var(--text-secondary);">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </span>
+                </form>
+                <div class="flex items-center space-x-4">
+                     <button id="theme-toggle" class="p-2 rounded-full focus:outline-none" style="color: var(--text-secondary);">
+                        <svg id="theme-toggle-dark-icon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                        <svg id="theme-toggle-light-icon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 5.05A1 1 0 003.636 6.464l.707.707a1 1 0 001.414-1.414l-.707-.707zM3 11a1 1 0 100-2H2a1 1 0 100 2h1zM6.464 14.364a1 1 0 00-1.414 1.414l.707.707a1 1 0 001.414-1.414l-.707-.707z"></path></svg>
+                    </button>
+                    <button onclick="navigateTo('my-items')" class="font-semibold" style="color: var(--text-secondary); hover: color: var(--text-accent);">My Items</button>
+                    <span id="navUsername" class="font-semibold hidden sm:block" style="color: var(--text-primary);"></span>
+                    <button id="logoutBtn" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="container mx-auto p-6">
+            <div id="homePage" class="subPage">
+                <div class="text-center mb-12">
+                    <h1 class="text-4xl md:text-5xl font-extrabold" style="color: var(--text-primary);">Welcome <span id="welcomeUsername">User</span>!</h1>
+                    <p class="text-lg mt-2" style="color: var(--text-secondary);">Choose your option to begin</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+                    <div onclick="navigateTo('report-lost')" class="p-6 rounded-2xl transition duration-300 cursor-pointer flex flex-col items-start text-left glow-border hover:scale-105 hover:shadow-lg" style="background-color: var(--bg-secondary); border: 1px solid var(--border-secondary);">
+                        <div class="mb-4" style="color: var(--text-accent);">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                               <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                             </svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2" style="color: var(--text-primary);">Report a Lost Item</h3>
+                        <p style="color: var(--text-secondary);">Post details about an item you've misplaced on campus.</p>
+                    </div>
+                     <div onclick="navigateTo('report-found')" class="p-6 rounded-2xl transition duration-300 cursor-pointer flex flex-col items-start text-left glow-border hover:scale-105 hover:shadow-lg" style="background-color: var(--bg-secondary); border: 1px solid var(--border-secondary);">
+                        <div class="mb-4" style="color: var(--text-accent);">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                               <path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.835 2.697a2.25 2.25 0 013.185 0l5.25 5.25a2.25 2.25 0 010 3.185l-5.25 5.25a2.25 2.25 0 01-3.185 0l-5.25-5.25a2.25 2.25 0 010-3.185l5.25-5.25z" />
+                             </svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2" style="color: var(--text-primary);">Report a Found Item</h3>
+                        <p style="color: var(--text-secondary);">Found something? Post it here to help it find its owner.</p>
+                    </div>
+                     <div onclick="document.getElementById('searchForm').requestSubmit()" class="p-6 rounded-2xl transition duration-300 cursor-pointer flex flex-col items-start text-left glow-border hover:scale-105 hover:shadow-lg" style="background-color: var(--bg-secondary); border: 1px solid var(--border-secondary);">
+                        <div class="mb-4" style="color: var(--text-accent);">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                               <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                             </svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2" style="color: var(--text-primary);">Search All Items</h3>
+                        <p style="color: var(--text-secondary);">Browse all lost and found listings to find what you're looking for.</p>
+                    </div>
+                    <div onclick="navigateTo('my-items')" class="p-6 rounded-2xl transition duration-300 cursor-pointer flex flex-col items-start text-left col-span-1 md:col-span-2 lg:col-span-3 glow-border hover:scale-105 hover:shadow-lg" style="background-color: var(--bg-secondary); border: 1px solid var(--border-secondary);">
+                         <div class="mb-4" style="color: var(--text-accent);">
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                               <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+                             </svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2" style="color: var(--text-primary);">My Posts & Claims</h3>
+                        <p style="color: var(--text-secondary);">Manage your posts and review any pending claims from others.</p>
+                    </div>
+                </div>
+
+                <section class="mt-20">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="p-6 rounded-2xl shadow-lg flex items-center space-x-4" style="background-color: var(--bg-secondary); border: 1px solid var(--border-secondary);">
+                            <div class="bg-blue-500/20 text-blue-400 p-3 rounded-xl">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </div>
+                            <div>
+                                <p class="text-3xl font-bold" style="color: var(--text-primary);">0</p>
+                                <p style="color: var(--text-secondary);">Items Found</p>
+                            </div>
+                        </div>
+                        <div class="p-6 rounded-2xl shadow-lg flex items-center space-x-4" style="background-color: var(--bg-secondary); border: 1px solid var(--border-secondary);">
+                            <div class="bg-green-500/20 text-green-400 p-3 rounded-xl">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                            </div>
+                            <div>
+                                <p class="text-3xl font-bold" style="color: var(--text-primary);">0</p>
+                                <p style="color: var(--text-secondary);">Items Returned</p>
+                            </div>
+                        </div>
+                        <div class="p-6 rounded-2xl shadow-lg flex items-center space-x-4" style="background-color: var(--bg-secondary); border: 1px solid var(--border-secondary);">
+                            <div class="bg-purple-500/20 text-purple-400 p-3 rounded-xl">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            </div>
+                            <div>
+                                <p class="text-3xl font-bold" style="color: var(--text-primary);">0</p>
+                                <p style="color: var(--text-secondary);">Campus Locations</p>
+                            </div>
+                        </div>
+                         <div class="p-6 rounded-2xl shadow-lg flex items-center space-x-4" style="background-color: var(--bg-secondary); border: 1px solid var(--border-secondary);">
+                            <div class="bg-red-500/20 text-red-400 p-3 rounded-xl">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </div>
+                            <div>
+                                <p class="text-3xl font-bold" style="color: var(--text-primary);">0%</p>
+                                <p style="color: var(--text-secondary);">Success Rate</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div id="reportLostPage" class="subPage hidden">
+                <button onclick="navigateTo('home')" class="mb-4" style="color: var(--text-accent);">&larr; Back to Dashboard</button>
+                <h1 class="text-3xl font-bold mb-4 text-center" style="color: var(--text-primary);">Report a Lost Item</h1>
+                <form id="lostForm" class="space-y-4 max-w-lg mx-auto p-8 rounded-lg shadow-lg" style="background-color: var(--bg-secondary); border: 1px solid var(--border-secondary);">
+                    <input name="title" type="text" placeholder="What item did you lose?" autocomplete="off" required class="w-full p-3 rounded placeholder-slate-400 focus:ring-emerald-500 focus:border-emerald-500" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); color: var(--text-primary);">
+                    <textarea name="description" placeholder="Describe the item (color, brand, etc.)" autocomplete="off" class="w-full p-3 rounded placeholder-slate-400 focus:ring-emerald-500 focus:border-emerald-500" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); color: var(--text-primary);"></textarea>
+                    <input name="location" type="text" placeholder="Where did you last see it?" autocomplete="off" class="w-full p-3 rounded placeholder-slate-400 focus:ring-emerald-500 focus:border-emerald-500" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); color: var(--text-primary);">
+                    <input name="date" type="date" class="w-full p-3 rounded placeholder-slate-400 focus:ring-emerald-500 focus:border-emerald-500" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); color: var(--text-primary);">
+                    <input name="contact_email" type="email" placeholder="Your Contact Email" autocomplete="email" required class="w-full p-3 rounded placeholder-slate-400 focus:ring-emerald-500 focus:border-emerald-500" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); color: var(--text-primary);">
+                    <input name="image" type="file" accept="image/*" class="w-full text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-500 file:text-white hover:file:bg-emerald-600">
+                    <button type="submit" class="w-full bg-red-500 text-white font-bold py-3 px-4 rounded-full hover:bg-red-600">Submit Lost Report</button>
+                </form>
+            </div>
+
+            <div id="reportFoundPage" class="subPage hidden">
+                <button onclick="navigateTo('home')" class="mb-4" style="color: var(--text-accent);">&larr; Back to Dashboard</button>
+                <h1 class="text-3xl font-bold mb-4 text-center" style="color: var(--text-primary);">Report a Found Item</h1>
+                <form id="foundForm" class="space-y-4 max-w-lg mx-auto p-8 rounded-lg shadow-lg" style="background-color: var(--bg-secondary); border: 1px solid var(--border-secondary);">
+                    <input name="title" type="text" placeholder="What item did you find?" autocomplete="off" required class="w-full p-3 rounded placeholder-slate-400 focus:ring-emerald-500 focus:border-emerald-500" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); color: var(--text-primary);">
+                    <textarea name="description" placeholder="Describe the item" autocomplete="off" class="w-full p-3 rounded placeholder-slate-400 focus:ring-emerald-500 focus:border-emerald-500" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); color: var(--text-primary);"></textarea>
+                    <input name="location" type="text" placeholder="Where did you find it?" autocomplete="off" class="w-full p-3 rounded placeholder-slate-400 focus:ring-emerald-500 focus:border-emerald-500" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); color: var(--text-primary);">
+                    <input name="date" type="date" class="w-full p-3 rounded placeholder-slate-400 focus:ring-emerald-500 focus:border-emerald-500" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); color: var(--text-primary);">
+                    <input name="contact_email" type="email" placeholder="Your Contact Email for the finder" autocomplete="email" required class="w-full p-3 rounded placeholder-slate-400 focus:ring-emerald-500 focus:border-emerald-500" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); color: var(--text-primary);">
+                    <input name="image" type="file" accept="image/*" class="w-full text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-500 file:text-white hover:file:bg-emerald-600">
+                    <button type="submit" class="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-full hover:bg-green-600">Submit Found Report</button>
+                </form>
+            </div>
+
+            <div id="searchResultsPage" class="subPage hidden">
+                <button onclick="navigateTo('home')" class="mb-4" style="color: var(--text-accent);">&larr; Back to Dashboard</button>
+                <h1 class="text-3xl font-bold mb-4" style="color: var(--text-primary);">Search Results</h1>
+                <div id="searchResults" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+            
+            <div id="myItemsPage" class="subPage hidden">
+                <button onclick="navigateTo('home')" class="mb-4" style="color: var(--text-accent);">&larr; Back to Dashboard</button>
+                <h1 class="text-3xl font-bold mb-4" style="color: var(--text-primary);">My Posted Items</h1>
+                <div id="myItemsList" class="space-y-6"></div>
+            </div>
+        </main>
+        
+        <footer class="text-center py-6 mt-12" style="border-top: 1px solid var(--border-secondary);">
+            <p class="font-semibold" style="color: var(--text-secondary);">Note: You are responsible for your own items.</p>
+        </footer>
+    </div>
+    
+    <!-- Image Viewer Modal -->
+    <div id="imageModal" onclick="closeImageModal()" class="fixed hidden inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4 cursor-pointer transition-opacity duration-300">
+        <span class="absolute top-4 right-6 text-white text-5xl font-bold cursor-pointer">&times;</span>
+        <img id="modalImage" src="" alt="Full size item image" class="max-w-full max-h-full object-contain cursor-default" onclick="event.stopPropagation()">
+    </div>
+
+    <div id="claimModal" class="fixed hidden inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="p-8 rounded-lg shadow-lg w-full max-w-md" style="background-color: var(--bg-secondary); border: 1px solid var(--border-secondary);">
+            <h2 class="text-2xl font-bold mb-4" style="color: var(--text-primary);">Claim Item</h2>
+            <p class="mb-4" style="color: var(--text-secondary);">Please provide proof of ownership to claim this item.</p>
+            <form id="claimForm">
+                <textarea name="proof" placeholder="Provide a unique detail & your mobile no. for contact." class="w-full p-2 rounded h-32 placeholder-slate-400" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-primary); color: var(--text-primary);"></textarea>
+                <div class="flex justify-end gap-4 mt-4">
+                    <button type="button" onclick="document.getElementById('claimModal').style.display = 'none'" class="bg-slate-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-600">Cancel</button>
+                    <button id="submitClaimBtn" type="submit" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600">Submit Claim</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="notification-toast"></div>
+
+    <script>
+        const API_BASE = "http://127.0.0.1:5000";
+        let currentUser = null;
+        let selectedItemId = null;
+
+        const uiPages = {
+            landing: document.getElementById('landingPage'),
+            auth: document.getElementById('authPage'),
+            verification: document.getElementById('verificationPage'),
+            main: document.getElementById('mainContent'),
+        };
+
+        const subPages = {
+            home: document.getElementById('homePage'),
+            'report-lost': document.getElementById('reportLostPage'),
+            'report-found': document.getElementById('reportFoundPage'),
+            'search-results': document.getElementById('searchResultsPage'),
+            'my-items': document.getElementById('myItemsPage'),
+        };
+
+        const imageModal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+
+        function openImageModal(src) {
+            if (src) {
+                modalImage.src = src;
+                imageModal.style.display = 'flex';
+            }
+        }
+
+        function closeImageModal() {
+            imageModal.style.display = 'none';
+            modalImage.src = ''; // Clear src to avoid showing old image briefly
+        }
+
+        function showNotification(message, isError = false) {
+            const toast = document.getElementById("notification-toast");
+            toast.textContent = message;
+            toast.className = isError ? "toast-error" : "toast-success";
+            toast.classList.add("show");
+            setTimeout(() => { toast.classList.remove("show"); }, 3000);
+        }
+
+        function validatePasswordRealTime(password) {
+            const requirements = {
+                length: password.length >= 8,
+                uppercase: /[A-Z]/.test(password),
+                special: /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)
+            };
+
+            // Update visual indicators
+            const lengthIcon = document.getElementById('req-length-icon');
+            const uppercaseIcon = document.getElementById('req-uppercase-icon');
+            const specialIcon = document.getElementById('req-special-icon');
+
+            if (lengthIcon) {
+                lengthIcon.textContent = requirements.length ? '✓' : '✗';
+                lengthIcon.className = requirements.length ? 'text-green-400' : 'text-red-400';
+            }
+
+            if (uppercaseIcon) {
+                uppercaseIcon.textContent = requirements.uppercase ? '✓' : '✗';
+                uppercaseIcon.className = requirements.uppercase ? 'text-green-400' : 'text-red-400';
+            }
+
+            if (specialIcon) {
+                specialIcon.textContent = requirements.special ? '✓' : '✗';
+                specialIcon.className = requirements.special ? 'text-green-400' : 'text-red-400';
+            }
+
+            return requirements.length && requirements.uppercase && requirements.special;
+        }
+
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('signupPassword');
+            const eyeIcon = document.getElementById('eyeIcon');
+            const eyeOffIcon = document.getElementById('eyeOffIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.add('hidden');
+                eyeOffIcon.classList.remove('hidden');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('hidden');
+                eyeOffIcon.classList.add('hidden');
+            }
+        }
+
+        async function resendVerification(e) {
+            e.preventDefault();
+            const form = document.getElementById("resendForm");
+            const data = Object.fromEntries(new FormData(form));
+            
+            const res = await fetch(`${API_BASE}/resend_verification`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            
+            if (res.ok) {
+                showNotification(result.message || "Verification email sent! Please check your inbox.");
+            } else {
+                showNotification(result.error || "Failed to send verification email", true);
+            }
+        }
+        
+        async function signup(e) {
+            e.preventDefault();
+            const form = document.getElementById("signupForm");
+            const data = Object.fromEntries(new FormData(form));
+            
+            // Validate password on frontend before submitting
+            if (!validatePasswordRealTime(data.password)) {
+                showNotification("Please ensure your password meets all requirements", true);
+                return;
+            }
+            
+            // Show loading state
+            const signupBtn = document.getElementById('signupBtn');
+            const signupBtnText = document.getElementById('signupBtnText');
+            const signupBtnSpinner = document.getElementById('signupBtnSpinner');
+            
+            signupBtn.disabled = true;
+            signupBtnText.textContent = 'Creating Account...';
+            signupBtnSpinner.classList.remove('hidden');
+            
+            try {
+            const res = await fetch(`${API_BASE}/signup`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+                
+            if (res.ok) {
+                    showNotification(result.message || "Signup successful! Please check your email to verify your account.");
+                    navigateTo('verification');
+            } else {
+                showNotification(result.error || "Signup failed", true);
+                }
+            } catch (error) {
+                showNotification("Network error. Please try again.", true);
+            } finally {
+                // Reset button state
+                signupBtn.disabled = false;
+                signupBtnText.textContent = 'Sign Up';
+                signupBtnSpinner.classList.add('hidden');
+            }
+        }
+
+        async function login(e) {
+            e.preventDefault();
+            const form = document.getElementById("loginForm");
+            const data = Object.fromEntries(new FormData(form));
+            const res = await fetch(`${API_BASE}/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (res.ok) {
+                localStorage.setItem('currentUser', JSON.stringify(result.user));
+                currentUser = result.user;
+                navigateTo('home');
+                showNotification(result.message || "Login successful!");
+            } else {
+                showNotification(result.error || "Login failed", true);
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('currentUser');
+            currentUser = null;
+            navigateTo('landing');
+            showNotification("You have been logged out.");
+        }
+
+        async function submitItem(formId, type) {
+            if (!currentUser) return showNotification("Please log in first!", true);
+            const form = document.getElementById(formId);
+            const formData = new FormData(form);
+            formData.append("user_id", currentUser.id);
+            formData.append("type", type);
+            const res = await fetch(`${API_BASE}/add_item`, { method: "POST", body: formData });
+            const data = await res.json();
+            if (res.ok) {
+                showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} item added!`);
+                form.reset();
+                navigateTo('home');
+            } else {
+                showNotification(data.error || "Failed to add item", true);
+            }
+        }
+
+        async function searchItems(e) {
+            e.preventDefault();
+            navigateTo('search-results');
+            const query = document.getElementById("searchInput").value.trim();
+            const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
+            const data = await res.json();
+            const resultsDiv = document.getElementById("searchResults");
+            resultsDiv.innerHTML = "";
+            if (res.ok && data.items.length > 0) {
+                data.items.forEach(item => {
+                    const card = document.createElement("div");
+                    card.className = "rounded-lg shadow-lg overflow-hidden";
+                    card.style.backgroundColor = 'var(--bg-secondary)';
+                    card.style.border = '1px solid var(--border-secondary)';
+                    
+                    let tag, button;
+                    if (item.status === 'pending') {
+                        tag = `<span class="bg-yellow-100 text-yellow-700 text-xs font-semibold px-2.5 py-1 rounded-full">Pending Approval</span>`;
+                        button = `<button class="px-6 py-2 bg-slate-500 text-white font-semibold rounded-lg shadow-md cursor-not-allowed" disabled>Claim Item</button>`;
+                    } else if (item.user_id == currentUser.id) {
+                        // User is the owner of this item - they can't claim their own item
+                        const tagText = item.type === 'lost' ? 'Lost' : 'Found';
+                        const tagColor = item.type === 'lost' ? 'bg-red-200 text-red-800' : 'bg-green-200 text-green-800';
+                        tag = `<span class="${tagColor} text-xs font-semibold px-2.5 py-1 rounded-full">${tagText}</span>`;
+                        button = `<button class="px-6 py-2 bg-slate-500 text-white font-semibold rounded-lg shadow-md cursor-not-allowed" disabled>Your Item</button>`;
+                    } else {
+                        const tagText = item.type === 'lost' ? 'Lost' : 'Found';
+                        const tagColor = item.type === 'lost' ? 'bg-red-200 text-red-800' : 'bg-green-200 text-green-800';
+                        tag = `<span class="${tagColor} text-xs font-semibold px-2.5 py-1 rounded-full">${tagText}</span>`;
+                        button = `<button onclick="openClaimModal(${item.id})" class="px-6 py-2 bg-emerald-600 text-white font-semibold rounded-lg shadow-md hover:bg-emerald-700 transition">Claim Item</button>`;
+                    }
+
+                    const imageUrl = item.images.length ? `${API_BASE}${item.images[0]}` : '';
+                    const imageElement = imageUrl
+                        ? `<img src="${imageUrl}" onclick="openImageModal('${imageUrl}')" class="w-full h-48 object-contain cursor-pointer transition-transform duration-300 hover:scale-105" style="background-color: var(--bg-tertiary);">`
+                        : `<div class="w-full h-48 flex items-center justify-center" style="background-color: var(--bg-tertiary); color: var(--text-secondary);">No Image</div>`;
+
+                    card.innerHTML = `
+                        ${imageElement}
+                        <div class="p-6">
+                            <div class="flex justify-between items-center mb-2">
+                                <h3 class="text-xl font-bold" style="color: var(--text-primary);">${item.title}</h3>
+                                ${tag}
+                            </div>
+                            <p class="mb-4 h-12 overflow-hidden" style="color: var(--text-secondary);">${item.description || 'No description provided.'}</p>
+                            <div class="space-y-2 mb-6 pt-4" style="color: var(--text-secondary); border-top: 1px solid var(--border-secondary);">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                    <span>${item.location || 'N/A'}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    <span>${item.type === 'lost' ? 'Lost on' : 'Found on'} ${item.date_str || 'N/A'}</span>
+                                </div>
+                            </div>
+                            <div class="flex justify-end items-center">
+                                ${button}
+                            </div>
+                        </div>
+                    `;
+                    resultsDiv.appendChild(card);
+                });
+            } else {
+                resultsDiv.innerHTML = `<p class="col-span-full text-center" style="color: var(--text-secondary);">No results found.</p>`;
+            }
+        }
+
+        function openClaimModal(itemId) {
+            if (!currentUser) return showNotification("Please log in to claim an item!", true);
+            selectedItemId = itemId;
+            document.getElementById("claimModal").style.display = "flex";
+        }
+
+        async function submitClaim(e) {
+            e.preventDefault();
+            if (!selectedItemId) return showNotification("No item selected!", true);
+            
+            const submitBtn = document.getElementById('submitClaimBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+
+            const form = document.getElementById("claimForm");
+            const payload = {
+                item_id: selectedItemId,
+                claimer_user_id: currentUser.id,
+                claimer_name: currentUser.name,
+                claimer_contact: currentUser.email,
+                proof: new FormData(form).get("proof") || ""
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/claim_item`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showNotification("Claim submitted for review!");
+                    form.reset();
+                    document.getElementById("claimModal").style.display = "none";
+                } else {
+                    showNotification(data.error || "Failed to submit claim", true);
+                }
+            } catch (error) {
+                showNotification("An error occurred. Please try again.", true);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Claim';
+            }
+        }
+
+        async function fetchMyItems() {
+            if (!currentUser) return;
+            const res = await fetch(`${API_BASE}/my_items?user_id=${currentUser.id}`);
+            const data = await res.json();
+            const listDiv = document.getElementById('myItemsList');
+            listDiv.innerHTML = '';
+
+            if (data.items && data.items.length > 0) {
+                data.items.forEach(item => {
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'p-4 rounded-lg shadow-md';
+                    itemEl.style.backgroundColor = 'var(--bg-secondary)';
+                    itemEl.style.border = '1px solid var(--border-secondary)';
+                    
+                    let claimsHtml = `<p class="mt-4" style="color: var(--text-secondary);">No pending claims.</p>`;
+                    if (item.claims && item.claims.length > 0) {
+                        claimsHtml = item.claims.map(claim => `
+                            <div class="mt-4 pt-4" style="border-top: 1px solid var(--border-secondary);">
+                                <p class="font-semibold" style="color: var(--text-primary);">Pending Claim from: ${claim.claimer_name}</p>
+                                <p style="color: var(--text-secondary);">Contact: ${claim.claimer_contact}</p>
+                                <p class="mt-2" style="color: var(--text-secondary);"><strong>Proof:</strong> ${claim.proof}</p>
+                                <div class="flex gap-4 mt-4">
+                                    <button onclick="resolveClaim(${claim.id}, 'approved')" class="bg-green-500 text-white px-4 py-2 rounded-lg">Approve</button>
+                                    <button onclick="resolveClaim(${claim.id}, 'denied')" class="bg-red-500 text-white px-4 py-2 rounded-lg">Deny</button>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+
+                    itemEl.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="text-xl font-bold" style="color: var(--text-primary);">${item.title}</h3>
+                                <p style="color: var(--text-secondary);">${item.description}</p>
+                            </div>
+                            <span class="bg-blue-200 text-blue-800 text-sm font-semibold px-3 py-1 rounded-full">${item.status}</span>
+                        </div>
+                        ${claimsHtml}
+                    `;
+                    listDiv.appendChild(itemEl);
+                });
+            } else {
+                listDiv.innerHTML = `<p style="color: var(--text-secondary);">You have not posted any items yet.</p>`;
+            }
+        }
+
+        async function resolveClaim(claimId, resolution) {
+            if (!currentUser) return;
+            const res = await fetch(`${API_BASE}/resolve_claim`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    claim_id: claimId,
+                    user_id: currentUser.id,
+                    resolution: resolution
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showNotification(`Claim successfully ${resolution}!`);
+                fetchMyItems(); 
+            } else {
+                showNotification(data.error || 'Failed to resolve claim', true);
+            }
+        }
+
+        function navigateTo(path, event) {
+            if (event) {
+                event.preventDefault();
+            }
+            
+            // Handle smooth scrolling for landing page sections
+            if (path === 'features' || path === 'about') {
+                const targetElement = document.getElementById(path);
+            if (targetElement) {
+                    Object.values(uiPages).forEach(p => p.style.display = 'none');
+                    uiPages.landing.style.display = 'block';
+                    
+                    setTimeout(() => {
+                        targetElement.scrollIntoView({ behavior: 'smooth' });
+                        history.pushState(null, null, `#${path}`);
+                    }, 0);
+                }
+                return;
+            }
+
+            history.pushState({ path }, '', `#${path}`);
+            handleRouteChange();
+        }
+
+        function scrollToSection(sectionId, event) {
+            console.log('scrollToSection called with:', sectionId);
+            
+            if (event) {
+                event.preventDefault();
+            }
+            
+            // Always show landing page first
+            Object.values(uiPages).forEach(p => p.style.display = 'none');
+            uiPages.landing.style.display = 'block';
+            
+            // Wait a bit for DOM to update, then scroll
+            setTimeout(() => {
+                const targetElement = document.getElementById(sectionId);
+                console.log('Target element found:', targetElement);
+                
+                if (targetElement) {
+                    console.log('Scrolling to element');
+                    targetElement.scrollIntoView({ 
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                    // Update URL hash
+                    history.pushState(null, null, `#${sectionId}`);
+                } else {
+                    console.error('Target element not found for:', sectionId);
+                }
+            }, 200);
+        }
+
+        function handleRouteChange() {
+            const path = window.location.hash.substring(1) || (currentUser ? 'home' : 'landing');
+            
+            Object.values(uiPages).forEach(p => p.style.display = 'none');
+            Object.values(subPages).forEach(p => p.style.display = 'none');
+
+            if (subPages[path]) {
+                uiPages.main.style.display = 'block';
+                subPages[path].style.display = 'block';
+                if(path === 'my-items') fetchMyItems();
+            } else if (uiPages[path]) {
+                uiPages[path].style.display = 'block';
+            } else {
+                uiPages.landing.style.display = 'block';
+            }
+            
+            if (currentUser) {
+                document.getElementById("navUsername").innerText = currentUser.name;
+                document.getElementById("welcomeUsername").innerText = currentUser.name;
+            }
+        }
+
+        function toggleAuthForms(e, showLogin) {
+            if (e) e.preventDefault();
+            const loginForm = document.getElementById("loginFormContainer");
+            const signupForm = document.getElementById("signupFormContainer");
+            
+            loginForm.classList.toggle('hidden', !showLogin);
+            signupForm.classList.toggle('hidden', showLogin);
+
+            [loginForm, signupForm].forEach(form => {
+                form.classList.remove('animate-fade-in');
+                void form.offsetWidth;
+                if (!form.classList.contains('hidden')) {
+                    form.classList.add('animate-fade-in');
+                }
+            });
+        }
+
+
+        window.addEventListener('popstate', handleRouteChange);
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+            }
+            handleRouteChange();
+
+            // Theme toggle logic
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const darkIcon = document.getElementById('theme-toggle-dark-icon');
+            const lightIcon = document.getElementById('theme-toggle-light-icon');
+
+            // Check for saved theme preference
+            if (localStorage.getItem('theme') === 'light' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+                document.body.classList.add('light-mode');
+                lightIcon.classList.remove('hidden');
+            } else {
+                darkIcon.classList.remove('hidden');
+            }
+
+            themeToggleBtn.addEventListener('click', function() {
+                // toggle icons
+                darkIcon.classList.toggle('hidden');
+                lightIcon.classList.toggle('hidden');
+
+                // if set via local storage previously
+                if (localStorage.getItem('theme')) {
+                    if (localStorage.getItem('theme') === 'light') {
+                        document.body.classList.remove('light-mode');
+                        localStorage.setItem('theme', 'dark');
+                    } else {
+                        document.body.classList.add('light-mode');
+                        localStorage.setItem('theme', 'light');
+                    }
+                // if NOT set via local storage previously
+                } else {
+                    if (document.body.classList.contains('light-mode')) {
+                        document.body.classList.remove('light-mode');
+                        localStorage.setItem('theme', 'dark');
+                    } else {
+                        document.body.classList.add('light-mode');
+                        localStorage.setItem('theme', 'light');
+                    }
+                }
+            });
+
+            document.getElementById("signupForm").addEventListener("submit", signup);
+            document.getElementById("loginForm").addEventListener("submit", login);
+            document.getElementById("resendForm").addEventListener("submit", resendVerification);
+            document.getElementById("logoutBtn").addEventListener("click", handleLogout);
+            document.getElementById("lostForm").addEventListener("submit", (e) => { e.preventDefault(); submitItem("lostForm", "lost"); });
+            document.getElementById("foundForm").addEventListener("submit", (e) => { e.preventDefault(); submitItem("foundForm", "found"); });
+            document.getElementById("searchForm").addEventListener("submit", searchItems);
+            document.getElementById("claimForm").addEventListener("submit", submitClaim);
+            
+            // Add real-time password validation
+            const signupPasswordInput = document.getElementById("signupPassword");
+            if (signupPasswordInput) {
+                signupPasswordInput.addEventListener("focus", (e) => {
+                    validatePasswordRealTime(e.target.value);
+                });
+                signupPasswordInput.addEventListener("input", (e) => {
+                    validatePasswordRealTime(e.target.value);
+                });
+            }
+            
+            // Add password visibility toggle
+            const togglePasswordBtn = document.getElementById("togglePassword");
+            if (togglePasswordBtn) {
+                togglePasswordBtn.addEventListener("click", togglePasswordVisibility);
+            }
+        });
+        
+        // Make scrollToSection globally accessible for testing
+        window.scrollToSection = scrollToSection;
+        
+        // Back to Top functionality
+        function scrollToTop() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+        
+        // Show/hide back to top button based on scroll position
+        function toggleBackToTopButton() {
+            const backToTopBtn = document.getElementById('backToTopBtn');
+            if (backToTopBtn) {
+                if (window.scrollY > 300) {
+                    backToTopBtn.style.opacity = '1';
+                    backToTopBtn.style.pointerEvents = 'auto';
+                    backToTopBtn.style.transform = 'translateY(0)';
+                } else {
+                    backToTopBtn.style.opacity = '0';
+                    backToTopBtn.style.pointerEvents = 'none';
+                    backToTopBtn.style.transform = 'translateY(20px)';
+                }
+            }
+        }
+        
+        // Add scroll event listener
+        window.addEventListener('scroll', toggleBackToTopButton);
+    </script>
+</body>
+</html>
+
