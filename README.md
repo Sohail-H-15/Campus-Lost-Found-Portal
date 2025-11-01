@@ -33,6 +33,7 @@ It acts as a central platform where users can post details of lost/found items, 
 ### 📦 Item Management
 - Post lost/found items with images
 - Search functionality (title & description)
+- **Image-based search** with AI matching (ResNet/SIFT)
 - Status tracking: *Pending*, *Approved*, *Claimed*
 
 ### 📝 Claim System
@@ -43,7 +44,8 @@ It acts as a central platform where users can post details of lost/found items, 
 ### 🎨 User Interface
 - Responsive design (desktop & mobile)
 - Dark/Light theme toggle
-- Real-time search
+- Real-time text search
+- **AI-powered image search** - Upload an image to find similar items
 - Image modal preview
 - Toast notifications
 
@@ -55,3 +57,53 @@ It acts as a central platform where users can post details of lost/found items, 
 ```bash
 git clone https://github.com/<your-username>/<repo-name>.git
 cd <repo-name>
+```
+
+### 2️⃣ Install Dependencies
+
+#### Option A: Using pip (Recommended for CPU)
+```bash
+pip install -r requirements.txt
+```
+
+#### Option B: Using virtual environment (Recommended)
+```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+**Note:** PyTorch can be large (~500MB-2GB). If you only want SIFT (OpenCV), you can:
+1. Install without PyTorch: `pip install -r requirements.txt --no-deps` then manually install: `pip install Flask Flask-Mail Flask-CORS opencv-python numpy Pillow`
+2. The app will automatically fall back to SIFT if PyTorch is unavailable
+
+### 3️⃣ Run the Application
+```bash
+python app.py
+```
+
+The server will start at `http://127.0.0.1:5000`
+
+### 4️⃣ Access the Application
+Open your browser and navigate to:
+- Frontend: Open `index.html` directly in your browser, or
+- If using a local server: `http://127.0.0.1:5000`
+
+### 5️⃣ Test Image Matching (Optional)
+If you have existing images in the database without feature vectors, you can backfill them:
+```bash
+# Using curl or Postman, send a POST request to:
+curl -X POST http://127.0.0.1:5000/backfill_features
+```
+
+Or test image matching:
+```bash
+curl -X POST -F "image=@path/to/test-image.jpg" -F "threshold=0.6" http://127.0.0.1:5000/match_images

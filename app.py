@@ -11,6 +11,8 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 
+from image_matcher import ImageMatcher
+
 # -----------------------
 # Config
 # -----------------------
@@ -37,6 +39,20 @@ mail = Mail(app)
 
 CORS(app, resources={r"/*": {"origins": "*"}})
 UPLOAD_DIR.mkdir(exist_ok=True)
+
+# Initialize image matcher (default to ResNet, fallback to SIFT if PyTorch unavailable)
+try:
+    image_matcher = ImageMatcher(method='resnet')
+    MATCHER_METHOD = 'resnet'
+except Exception as e:
+    print(f"ResNet not available ({e}), falling back to SIFT")
+    try:
+        image_matcher = ImageMatcher(method='sift')
+        MATCHER_METHOD = 'sift'
+    except Exception as e2:
+        print(f"Image matching unavailable: {e2}")
+        image_matcher = None
+        MATCHER_METHOD = None
 
 
 # -----------------------
@@ -87,11 +103,19 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 item_id INTEGER NOT NULL,
                 filename TEXT NOT NULL,
+                feature_vector BLOB,
                 created_at TEXT NOT NULL,
                 FOREIGN KEY(item_id) REFERENCES items(id)
             );
             """
         )
+        # Migration: Add feature_vector column if it doesn't exist
+        # Check if column exists by querying table info
+        cur.execute("PRAGMA table_info(images)")
+        columns = [col[1] for col in cur.fetchall()]
+        if 'feature_vector' not in columns:
+            cur.execute("ALTER TABLE images ADD COLUMN feature_vector BLOB")
+        
         cur.execute(
             """
             CREATE TABLE IF NOT EXISTS claims (
@@ -193,7 +217,19 @@ def item_with_images_dict(con, item_row: sqlite3.Row) -> Dict[str, Any]:
 # Routes
 # -----------------------
 @app.route("/")
-def health(): return jsonify({"status": "ok"})
+def health(): 
+    status = {"status": "ok"}
+    if image_matcher is not None:
+        status["image_matching"] = {
+            "available": True,
+            "method": MATCHER_METHOD
+        }
+    else:
+        status["image_matching"] = {
+            "available": False,
+            "method": None
+        }
+    return jsonify(status)
 
 @app.route("/signup", methods=["POST"])
 def signup():
@@ -413,8 +449,23 @@ def add_item():
             if file and file.filename:
                 # UPDATED: Use the new filename-safe timestamp function
                 filename = f"{item_id}_{now_for_filename()}_{secure_filename(file.filename)}"
-                file.save(UPLOAD_DIR / filename)
-                con.execute("INSERT INTO images (item_id, filename, created_at) VALUES (?, ?, ?)", (item_id, filename, now_str()))
+                file_path = UPLOAD_DIR / filename
+                file.save(file_path)
+                
+                # Compute and store feature vector if image matching is available
+                feature_vector = None
+                if image_matcher is not None:
+                    try:
+                        features = image_matcher.extract_features(file_path)
+                        if features.size > 0:
+                            feature_vector = image_matcher.serialize_features(features)
+                    except Exception as e:
+                        print(f"Warning: Failed to extract features from {filename}: {e}")
+                
+                con.execute(
+                    "INSERT INTO images (item_id, filename, feature_vector, created_at) VALUES (?, ?, ?, ?)",
+                    (item_id, filename, feature_vector, now_str())
+                )
         con.commit()
         item_row = con.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
         return jsonify(item_with_images_dict(con, item_row)), 201
@@ -474,7 +525,17 @@ def my_items():
         return jsonify({"error": "user_id is required"}), 400
 
     with get_db() as con:
-        item_rows = con.execute("SELECT * FROM items WHERE user_id = ? ORDER BY created_at DESC", (user_id,)).fetchall()
+        # Get items ordered by: items with pending claims first, then by created_at DESC
+        item_rows = con.execute("""
+            SELECT it.*, 
+                   CASE WHEN EXISTS (
+                       SELECT 1 FROM claims c 
+                       WHERE c.item_id = it.id AND c.status = 'pending'
+                   ) THEN 1 ELSE 0 END as has_claims
+            FROM items it 
+            WHERE it.user_id = ? 
+            ORDER BY has_claims DESC, it.created_at DESC
+        """, (user_id,)).fetchall()
         response_items = []
         for item_row in item_rows:
             item_dict = item_with_images_dict(con, item_row)
@@ -518,6 +579,186 @@ def resolve_claim():
         con.commit()
         
     return jsonify({"message": f"Claim {resolution}"})
+
+@app.route("/match_images", methods=["POST"])
+def match_images():
+    """
+    Match uploaded image with existing images in the database
+    Returns similar items sorted by similarity score
+    """
+    if image_matcher is None:
+        return jsonify({"error": "Image matching is not available. Please install required dependencies."}), 503
+    
+    if 'image' not in request.files:
+        return jsonify({"error": "No image file provided"}), 400
+    
+    file = request.files['image']
+    if not file or not file.filename:
+        return jsonify({"error": "Invalid image file"}), 400
+    
+    # Get similarity threshold (default: 0.3 for more lenient matching)
+    threshold = float(request.form.get('threshold', 0.3))
+    max_results = int(request.form.get('max_results', 10))
+    
+    try:
+        # Save uploaded file temporarily
+        temp_filename = f"temp_{now_for_filename()}_{secure_filename(file.filename)}"
+        temp_path = UPLOAD_DIR / temp_filename
+        file.save(temp_path)
+        
+        # Extract features from uploaded image
+        query_features = image_matcher.extract_features(temp_path)
+        
+        if query_features.size == 0:
+            os.remove(temp_path)
+            return jsonify({"error": "Failed to extract features from image"}), 400
+        
+        # Compare with all images in database
+        matches = []
+        with get_db() as con:
+            # Get all images with their feature vectors
+            rows = con.execute(
+                "SELECT i.id as image_id, i.item_id, i.filename, i.feature_vector, "
+                "it.id, it.type, it.title, it.description, it.location, it.date_str, it.status "
+                "FROM images i "
+                "JOIN items it ON i.item_id = it.id "
+                "WHERE i.feature_vector IS NOT NULL AND it.status IN ('open', 'pending')"
+            ).fetchall()
+            
+            print(f"Comparing query image with {len(rows)} images in database (threshold: {threshold})")
+            for row in rows:
+                try:
+                    # Deserialize stored features
+                    stored_features = image_matcher.deserialize_features(row['feature_vector'])
+                    
+                    # Compare features
+                    similarity = image_matcher.compare_features(query_features, stored_features)
+                    
+                    print(f"  Image {row['filename']}: similarity = {similarity:.4f}")
+                    
+                    if similarity >= threshold:
+                        matches.append({
+                            'item_id': row['item_id'],
+                            'image_id': row['image_id'],
+                            'filename': row['filename'],
+                            'similarity': round(similarity, 4),
+                            'item': {
+                                'id': row['id'],
+                                'type': row['type'],
+                                'title': row['title'],
+                                'description': row['description'],
+                                'location': row['location'],
+                                'date_str': row['date_str'],
+                                'status': row['status'],
+                                'image_url': f"/uploads/{row['filename']}"
+                            }
+                        })
+                except Exception as e:
+                    print(f"Error comparing with image {row['filename']}: {e}")
+                    continue
+        
+        # Clean up temporary file
+        try:
+            os.remove(temp_path)
+        except:
+            pass
+        
+        # Sort by similarity (descending) and limit results
+        matches.sort(key=lambda x: x['similarity'], reverse=True)
+        matches = matches[:max_results]
+        
+        return jsonify({
+            "method": MATCHER_METHOD,
+            "threshold": threshold,
+            "matches_found": len(matches),
+            "matches": matches
+        })
+    
+    except Exception as e:
+        # Clean up temporary file on error
+        try:
+            if 'temp_path' in locals():
+                os.remove(temp_path)
+        except:
+            pass
+        return jsonify({"error": f"Error processing image: {str(e)}"}), 500
+
+@app.route("/backfill_features", methods=["POST"])
+def backfill_features():
+    """
+    Backfill feature vectors for existing images that don't have them
+    Useful for migrating existing data to include image matching
+    """
+    if image_matcher is None:
+        return jsonify({"error": "Image matching is not available"}), 503
+    
+    processed = 0
+    errors = 0
+    
+    with get_db() as con:
+        # Get all images without feature vectors
+        rows = con.execute(
+            "SELECT id, filename FROM images WHERE feature_vector IS NULL"
+        ).fetchall()
+        
+        for row in rows:
+            try:
+                image_path = UPLOAD_DIR / row['filename']
+                if not image_path.exists():
+                    errors += 1
+                    continue
+                
+                # Extract features
+                features = image_matcher.extract_features(image_path)
+                if features.size > 0:
+                    feature_vector = image_matcher.serialize_features(features)
+                    con.execute(
+                        "UPDATE images SET feature_vector = ? WHERE id = ?",
+                        (feature_vector, row['id'])
+                    )
+                    processed += 1
+                else:
+                    errors += 1
+            except Exception as e:
+                print(f"Error processing image {row['filename']}: {e}")
+                errors += 1
+        
+        con.commit()
+    
+    return jsonify({
+        "message": f"Backfill complete",
+        "processed": processed,
+        "errors": errors,
+        "total": len(rows) if 'rows' in locals() else 0
+    })
+
+@app.route("/stats", methods=["GET"])
+def get_stats():
+    """Get statistics about items found, returned, and success rate"""
+    with get_db() as con:
+        # Items found (all 'found' type items that are not yet returned)
+        found_items = con.execute(
+            "SELECT COUNT(*) as count FROM items WHERE type = 'found' AND status != 'returned'"
+        ).fetchone()['count']
+        
+        # Items returned (status = 'returned')
+        returned_items = con.execute(
+            "SELECT COUNT(*) as count FROM items WHERE status = 'returned'"
+        ).fetchone()['count']
+        
+        # Total items
+        total_items = con.execute(
+            "SELECT COUNT(*) as count FROM items"
+        ).fetchone()['count']
+        
+        # Calculate success rate (returned / total, or 0 if no items)
+        success_rate = round((returned_items / total_items * 100) if total_items > 0 else 0, 1)
+        
+        return jsonify({
+            "items_found": found_items,
+            "items_returned": returned_items,
+            "success_rate": success_rate
+        })
 
 @app.route("/uploads/<path:filename>")
 def uploads(filename):
