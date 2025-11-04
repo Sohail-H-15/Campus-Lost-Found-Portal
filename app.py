@@ -764,6 +764,41 @@ def get_stats():
 def uploads(filename):
     return send_from_directory(UPLOAD_DIR, filename)
 
+@app.route("/delete_item", methods=["POST"])
+def delete_item():
+    data = request.get_json()
+    if not data or not data.get('item_id') or not data.get('user_id'):
+        return jsonify({"error": "item_id and user_id are required"}), 400
+
+    item_id = int(data['item_id'])
+    user_id = int(data['user_id'])
+
+    with get_db() as con:
+        item_row = con.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
+        if not item_row:
+            return jsonify({"error": "Item not found"}), 404
+        if item_row['user_id'] != user_id:
+            return jsonify({"error": "Unauthorized"}), 403
+
+        # Delete image files from disk
+        image_rows = con.execute("SELECT filename FROM images WHERE item_id = ?", (item_id,)).fetchall()
+        for img in image_rows:
+            try:
+                img_path = UPLOAD_DIR / img['filename']
+                if img_path.exists():
+                    os.remove(img_path)
+            except Exception as e:
+                # Continue even if a file can't be removed; DB will still be cleaned up
+                print(f"Warning: could not remove file {img['filename']}: {e}")
+
+        # Delete related DB rows (order: images -> claims -> item)
+        con.execute("DELETE FROM images WHERE item_id = ?", (item_id,))
+        con.execute("DELETE FROM claims WHERE item_id = ?", (item_id,))
+        con.execute("DELETE FROM items WHERE id = ?", (item_id,))
+        con.commit()
+
+    return jsonify({"message": "Item deleted"}), 200
+
 if __name__ == "__main__":
     init_db()
     app.run(host="127.0.0.1", port=5000, debug=True)
